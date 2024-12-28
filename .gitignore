@@ -1,0 +1,9 @@
+.idea/
+
+.env
+
+static/
+
+bin/
+
+.DS_Store
