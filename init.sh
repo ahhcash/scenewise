@@ -32,11 +32,7 @@ while IFS=, read -r link _; do
     json_payload=$(cat <<EOF
 {
     "url": "$link",
-    "collection": "video_$((i+1))",
-    "metadata": {
-        "attempt": "first",
-        "index": "$i"
-    },
+    "collection": "movie_trailers",
     "feature_extractors": [
         {
             "interval_sec": 10,
