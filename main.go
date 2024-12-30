@@ -29,7 +29,9 @@ func main() {
 		})
 	})
 
-	addr := fmt.Sprintf(":%s", cfg.ServerPort)
+	// Updated port binding
+	addr := fmt.Sprintf(":%s", cfg.Port)
+	e.Logger.Info(fmt.Sprintf("Starting server on %s", addr))
 	e.Logger.Fatal(e.Start(addr))
 }
 
