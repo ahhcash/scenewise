@@ -7,3 +7,4 @@ static/
 bin/
 
 .DS_Store
+/cmd/api/tmp/
