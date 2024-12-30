@@ -1,8 +1,8 @@
-package models
+package mixpeek
 
 import "time"
 
-type SearchReq struct {
+type MixpeekSearchReq struct {
 	Queries          []Query        `json:"queries"`
 	Collections      []string       `json:"collections"`
 	Filters          map[string]any `json:"filters,omitempty"`
@@ -20,7 +20,7 @@ type Query struct {
 	EmbeddingModel string `json:"embedding_model"`
 }
 
-type SearchResp struct {
+type MixpeekSearchResp struct {
 	Results    []SearchResult `json:"results"`
 	Pagination map[string]any `json:"pagination"`
 	Total      int            `json:"total"`
