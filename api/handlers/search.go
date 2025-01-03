@@ -35,11 +35,14 @@ func (h *SearchHandler) Search(c echo.Context) error {
 	mixpeekQueries := make([]mixpeek.Query, 0)
 	for _, q := range grotleReq.Queries {
 		// Add multimodal query
-		mixpeekQueries = append(mixpeekQueries, mixpeek.Query{
-			Type:           q.Type,
-			Value:          q.Value,
-			EmbeddingModel: "multimodal",
-		})
+
+		if "text" != q.Type {
+			mixpeekQueries = append(mixpeekQueries, mixpeek.Query{
+				Type:           q.Type,
+				Value:          q.Value,
+				EmbeddingModel: "multimodal",
+			})
+		}
 
 		if "text" == q.Type {
 			mixpeekQueries = append(mixpeekQueries, mixpeek.Query{
@@ -69,7 +72,7 @@ func (h *SearchHandler) Search(c echo.Context) error {
 	q.Set("page", fmt.Sprintf("%d", grotleReq.Page))
 	q.Set("offset_position", fmt.Sprintf("%d", grotleReq.OffsetPosition))
 	apiURL.RawQuery = q.Encode()
-
+	fmt.Printf("ZZZ final mixpeek req: %+v\n", mixpeekReq)
 	body, err := json.Marshal(mixpeekReq)
 
 	if err != nil {
