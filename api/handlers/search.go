@@ -70,7 +70,6 @@ func (h *SearchHandler) Search(c echo.Context) error {
 	q.Set("page", fmt.Sprintf("%d", grotleReq.Page))
 	q.Set("offset_position", fmt.Sprintf("%d", grotleReq.OffsetPosition))
 	apiURL.RawQuery = q.Encode()
-	fmt.Printf("ZZZ final mixpeek req: %+v\n", mixpeekReq)
 	body, err := json.Marshal(mixpeekReq)
 
 	if err != nil {
