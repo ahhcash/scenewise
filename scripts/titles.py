@@ -1,6 +1,5 @@
 import csv
 import urllib.parse
-from datetime import datetime
 
 def extract_video_title(url):
     # Get the filename from the URL

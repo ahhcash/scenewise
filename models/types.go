@@ -2,7 +2,20 @@ package models
 
 import "time"
 
-type VideoSearchResult struct {
+type GrotleSearchRequest struct {
+	Queries        []Query  `json:"queries"`
+	Collections    []string `json:"collections"`
+	Page           int      `json:"page"`
+	OffsetPosition int      `json:"offset_position"`
+}
+
+type Query struct {
+	Type           string `json:"type"` // "text", "base64"
+	Value          string `json:"value"`
+	EmbeddingModel string `json:"embedding_model"`
+}
+
+type GrotleSearchResult struct {
 	ID           string  `json:"id"`
 	URL          string  `json:"url"`
 	ThumbnailURL string  `json:"thumbnailUrl,omitempty"`
@@ -24,8 +37,8 @@ type VideoSearchResult struct {
 	OriginalMetadata map[string]interface{} `json:"originalMetadata,omitempty"`
 }
 
-type VideoSearchResponse struct {
-	Results    []VideoSearchResult `json:"results"`
+type GrotleSearchResponse struct {
+	Results    []GrotleSearchResult `json:"results"`
 	Pagination struct {
 		CurrentPage  int  `json:"currentPage"`
 		TotalPages   int  `json:"totalPages"`

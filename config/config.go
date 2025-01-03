@@ -9,7 +9,7 @@ import (
 type Config struct {
 	MixpeekAPIKey  string
 	MixpeekBaseURL string
-	Port           string // Changed from ServerPort
+	Port           string
 	CollectionName string
 }
 
@@ -29,7 +29,7 @@ func Load() *Config {
 			MixpeekAPIKey:  getEnv("MIXPEEK_API_KEY", ""),
 			MixpeekBaseURL: getEnv("MIXPEEK_BASE_URL", "https://api.mixpeek.com"),
 			Port:           port,
-			CollectionName: getEnv("COLLECTION_NAME", "movie_trailers"),
+			CollectionName: getEnv("COLLECTION_NAME", "movie_trailers2"),
 		}
 	})
 	return config

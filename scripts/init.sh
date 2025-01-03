@@ -32,7 +32,7 @@ while IFS=, read -r link _; do
     json_payload=$(cat <<EOF
 {
     "url": "$link",
-    "collection": "movie_trailers",
+    "collection": "movie_trailers2",
     "feature_extractors": [
         {
             "interval_sec": 10,
@@ -43,10 +43,20 @@ while IFS=, read -r link _; do
                 }
             ],
             "transcribe": {
-                "enabled": true
+                "enabled": true,
+                "embedding_model": "text",
+                "prompt": "Transcribe the spoken words in this video accurately and comprehensively, adhering to the following guidelines: Transcribe in the original spoken language(s). Preserve filler words (um, uh, etc.) and false starts. Use appropriate punctuation to reflect natural speech patterns and pauses. For acronyms or specialized terms, transcribe as heard. If there is no audio, return None. Do NOT preface or postface your transcription with any text.",
+                "json_output": {
+                  "transcript": "<your transcript here>"
+                }
             },
             "describe": {
-                "enabled": true
+                "enabled": true,
+                "embedding_model": "text",
+                "prompt": "Describe this video segment in as much detail as possible. You are to create a screenplay of the video segment, including all the actions and sounds. Make sure to include objects, motion, sound, and any other relevant information. The purpose of this is so I can search through the text to find this video segment later. Don't include any pretext or posttext like \"this is a video of\" or \"this video shows\". Don't include text that is already visible in the video.",
+                "json_output": {
+                  "description": "<your description here>"
+                }
             }
         }
     ]

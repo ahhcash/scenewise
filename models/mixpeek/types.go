@@ -23,7 +23,6 @@ type Query struct {
 type MixpeekSearchResp struct {
 	Results    []SearchResult `json:"results"`
 	Pagination map[string]any `json:"pagination"`
-	Total      int            `json:"total"`
 }
 
 type SearchResult struct {

@@ -8,6 +8,7 @@ import (
 	"github.com/ahhcash/vsearch/models/mixpeek"
 	"io"
 	"net/http"
+	"net/url"
 
 	"github.com/ahhcash/vsearch/config"
 	"github.com/labstack/echo/v4"
@@ -22,38 +23,63 @@ func NewSearchHandler(cfg *config.Config) *SearchHandler {
 }
 
 func (h *SearchHandler) Search(c echo.Context) error {
-	var req mixpeek.MixpeekSearchReq
-	if err := c.Bind(&req); err != nil {
+	var grotleReq models.GrotleSearchRequest
+	if err := c.Bind(&grotleReq); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid request body")
 	}
 
-	if err := validateSearchRequest(&req); err != nil {
+	if err := validateSearchRequest(&grotleReq); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	if len(req.Collections) == 0 {
-		req.Collections = []string{h.cfg.CollectionName}
+	queries := make([]mixpeek.Query, len(grotleReq.Queries))
+	for i, q := range grotleReq.Queries {
+		queries[i].Type = q.Type
+		queries[i].Value = q.Value
+		queries[i].EmbeddingModel = q.EmbeddingModel
 	}
 
-	body, err := json.Marshal(req)
+	if nil == grotleReq.Collections || len(grotleReq.Collections) == 0 {
+		grotleReq.Collections = []string{h.cfg.CollectionName}
+	}
+
+	mixpeekReq := mixpeek.MixpeekSearchReq{
+		Queries:     queries,
+		Collections: grotleReq.Collections,
+	}
+
+	baseURL := fmt.Sprintf("%s/features/search", h.cfg.MixpeekBaseURL)
+	apiURL, err := url.Parse(baseURL)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to construct API URL")
+	}
+
+	q := apiURL.Query()
+	q.Set("page", fmt.Sprintf("%d", grotleReq.Page))
+	q.Set("offset_position", fmt.Sprintf("%d", grotleReq.OffsetPosition))
+	apiURL.RawQuery = q.Encode()
+
+	body, err := json.Marshal(mixpeekReq)
+
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to process request")
 	}
 
-	mixpeekReq, err := http.NewRequest(
+	// Create request to Mixpeek API
+	req, err := http.NewRequest(
 		http.MethodPost,
-		fmt.Sprintf("%s/features/search", h.cfg.MixpeekBaseURL),
+		apiURL.String(),
 		bytes.NewBuffer(body),
 	)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to create request")
 	}
 
-	mixpeekReq.Header.Set("Content-Type", "application/json")
-	mixpeekReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", h.cfg.MixpeekAPIKey))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", h.cfg.MixpeekAPIKey))
 
 	client := &http.Client{}
-	resp, err := client.Do(mixpeekReq)
+	resp, err := client.Do(req)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to perform search")
 	}
@@ -73,40 +99,39 @@ func (h *SearchHandler) Search(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to parse response")
 	}
 
-	videoResults := make([]models.VideoSearchResult, 0)
+	videoResults := make([]models.GrotleSearchResult, 0)
 	for _, result := range mixpeekResp.Results {
-		url := extractURL(result)
+		urlExtracted := extractURL(result)
 
-		videoResult := models.VideoSearchResult{
-			ID:          result.FeatureID,
-			URL:         url,
-			Score:       result.Score,
-			StartTime:   getFloatValue(result.StartTime),
-			EndTime:     getFloatValue(result.EndTime),
-			Description: result.Description,
-			Transcript:  result.Transcription,
-			CreatedAt:   result.CreatedAt,
-
-			MatchType: determineMatchType(result),
-
+		videoResult := models.GrotleSearchResult{
+			ID:               result.FeatureID,
+			URL:              urlExtracted,
+			Score:            result.Score,
+			StartTime:        getFloatValue(result.StartTime),
+			EndTime:          getFloatValue(result.EndTime),
+			Description:      result.Description,
+			Transcript:       result.Transcription,
+			CreatedAt:        result.CreatedAt,
+			MatchType:        determineMatchType(result),
 			OriginalMetadata: result.Metadata,
 		}
 
-		fileData := result.FileData
-		if duration, ok := fileData["duration"].(float64); ok {
-			videoResult.Duration = duration
-		}
-		if title, ok := fileData["file_name"].(string); ok {
-			videoResult.Title = title
-		}
-		if thumbnail, ok := fileData["thumbnail"].(string); ok {
-			videoResult.ThumbnailURL = thumbnail
+		if fileData := result.FileData; fileData != nil {
+			if duration, ok := fileData["duration"].(float64); ok {
+				videoResult.Duration = duration
+			}
+			if title, ok := fileData["file_name"].(string); ok {
+				videoResult.Title = title
+			}
+			if thumbnail, ok := fileData["thumbnail"].(string); ok {
+				videoResult.ThumbnailURL = thumbnail
+			}
 		}
 
 		videoResults = append(videoResults, videoResult)
 	}
 
-	response := models.VideoSearchResponse{
+	response := models.GrotleSearchResponse{
 		Results: videoResults,
 		Pagination: struct {
 			CurrentPage  int  `json:"currentPage"`
@@ -114,14 +139,36 @@ func (h *SearchHandler) Search(c echo.Context) error {
 			TotalResults int  `json:"totalResults"`
 			HasMore      bool `json:"hasMore"`
 		}{
-			CurrentPage:  1, // Extract from request/response
+			CurrentPage:  getCurrentPage(mixpeekResp),
 			TotalPages:   parseTotalPages(mixpeekResp),
-			TotalResults: mixpeekResp.Total,
+			TotalResults: getTotalResults(mixpeekResp),
 			HasMore:      hasMoreResults(mixpeekResp),
 		},
 	}
 
 	return c.JSON(http.StatusOK, response)
+}
+
+func getTotalResults(resp mixpeek.MixpeekSearchResp) int {
+	if resp.Pagination != nil {
+		if total, ok := resp.Pagination["total"].(float64); ok {
+			return int(total)
+		}
+	}
+	return 0
+}
+
+// Also add this helper function to get current page
+func getCurrentPage(resp mixpeek.MixpeekSearchResp) int {
+	if resp.Pagination != nil {
+		if page, ok := resp.Pagination["page"].(float64); ok {
+			return int(page)
+		}
+		if page, ok := resp.Pagination["current_page"].(float64); ok {
+			return int(page)
+		}
+	}
+	return 1
 }
 
 func getFloatValue(ptr *float64) float64 {
@@ -132,7 +179,7 @@ func getFloatValue(ptr *float64) float64 {
 	return *ptr
 }
 
-func validateSearchRequest(req *mixpeek.MixpeekSearchReq) error {
+func validateSearchRequest(req *models.GrotleSearchRequest) error {
 	if len(req.Queries) == 0 {
 		return fmt.Errorf("at least one query is required")
 	}
@@ -155,19 +202,45 @@ func validateSearchRequest(req *mixpeek.MixpeekSearchReq) error {
 }
 
 func extractURL(result mixpeek.SearchResult) string {
-	if url, ok := result.FileData["url"].(string); ok {
-		return url
+	if uri, ok := result.FileData["url"].(string); ok {
+		return uri
 	}
 
-	if url, ok := result.Metadata["url"].(string); ok {
-		return url
+	if uri, ok := result.Metadata["url"].(string); ok {
+		return uri
 	}
 
 	return ""
 }
 
 func determineMatchType(result mixpeek.SearchResult) string {
-	return "visual" // Default for now
+	if result.OriginalValues != nil {
+		_, hasMultimodal := result.OriginalValues["multimodal"]
+		_, hasText := result.OriginalValues["text"]
+		_, hasImage := result.OriginalValues["image"]
+		_, hasVideo := result.OriginalValues["video"]
+
+		if hasMultimodal {
+			return "multimodal"
+		} else if hasVideo {
+			return "video"
+		} else if hasImage {
+			return "visual"
+		} else if hasText {
+			return "text"
+		}
+	}
+
+	switch result.Modality {
+	case "video":
+		return "video"
+	case "image":
+		return "visual"
+	case "text":
+		return "text"
+	default:
+		return "unknown"
+	}
 }
 
 func parseTotalPages(resp mixpeek.MixpeekSearchResp) int {
