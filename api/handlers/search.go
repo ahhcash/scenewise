@@ -41,11 +41,13 @@ func (h *SearchHandler) Search(c echo.Context) error {
 			EmbeddingModel: "multimodal",
 		})
 
-		mixpeekQueries = append(mixpeekQueries, mixpeek.Query{
-			Type:           q.Type,
-			Value:          q.Value,
-			EmbeddingModel: "text",
-		})
+		if "text" == q.Type {
+			mixpeekQueries = append(mixpeekQueries, mixpeek.Query{
+				Type:           q.Type,
+				Value:          q.Value,
+				EmbeddingModel: "text",
+			})
+		}
 	}
 
 	if nil == grotleReq.Collections || len(grotleReq.Collections) == 0 {
