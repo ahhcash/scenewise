@@ -36,13 +36,11 @@ func (h *SearchHandler) Search(c echo.Context) error {
 	for _, q := range grotleReq.Queries {
 		// Add multimodal query
 
-		if "text" != q.Type {
-			mixpeekQueries = append(mixpeekQueries, mixpeek.Query{
-				Type:           q.Type,
-				Value:          q.Value,
-				EmbeddingModel: "multimodal",
-			})
-		}
+		mixpeekQueries = append(mixpeekQueries, mixpeek.Query{
+			Type:           q.Type,
+			Value:          q.Value,
+			EmbeddingModel: "multimodal",
+		})
 
 		if "text" == q.Type {
 			mixpeekQueries = append(mixpeekQueries, mixpeek.Query{
