@@ -34,7 +34,6 @@ func (h *SearchHandler) Search(c echo.Context) error {
 
 	mixpeekQueries := make([]mixpeek.Query, 0)
 	for _, q := range grotleReq.Queries {
-		// Add multimodal query
 
 		mixpeekQueries = append(mixpeekQueries, mixpeek.Query{
 			Type:           q.Type,

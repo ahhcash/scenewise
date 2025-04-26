@@ -12,7 +12,6 @@ import (
 
 func main() {
 	cfg := config.Load()
-
 	e := echo.New()
 
 	e.Use(middleware.Logger())
