@@ -1,4 +1,4 @@
-# Grotle
+# Scenewise
 
 Multimodal semantic search with [mixpeek](https://mixpeek.com)!
 
